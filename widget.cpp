@@ -8,33 +8,28 @@
 #include <QToolButton>
 #include <QLineEdit>
 #include <QButtonGroup>
+#include <QString>
 
 Widget::Widget(QWidget *parent) : QWidget(parent){
     QVBoxLayout *grid1 = new QVBoxLayout(this);
     QGridLayout *grid = new QGridLayout(this);
-    QLineEdit *label;
-    label = new QLineEdit;
-    label->setReadOnly(true);
-    label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-
+    label = new QLabel("0", this);
+    label->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    label->setAlignment(Qt::AlignBottom | Qt::AlignRight);
+    label->setStyleSheet("background-color: white");
     grid1->addWidget(label);
     grid1->addLayout(grid);
     grid1->setSpacing(2);
+    int columns = 5;
     QList<QString> values(
-                { "C", "Del", "(", ")",
-                  "sin", "cos", "tg", "ctg",
-                  "!", "^X", "ld", "logn",
-                  "1", "2", "3", "+",
-                  "4", "5", "6", "-",
-                  "7", "8", "9", "*",
-                  ".", "0", "=", "/"
+                { "C", "Del", "(", ")", "",
+                  "!", "^X", "ld", "logn", "",
+                  "1", "2", "3", "+", "ctg",
+                  "4", "5", "6", "-", "tg",
+                  "7", "8", "9", "*", "cos",
+                  ".", "0", "=", "/", "sin"
                 });
     QList<QString> numbers({ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"});
-    QList<QString> actions({ "C", "Del", "(", ")",
-                             "sin", "cos", "tg", "ctg",
-                             "!", "^X", "ld", "logn",
-                             "+", "-", "*", ".", "=", "/"
-                           });
 
 
     QButtonGroup *actionGroup = new QButtonGroup(this);
@@ -62,17 +57,126 @@ Widget::Widget(QWidget *parent) : QWidget(parent){
 
     int pos = 0;
 
-    for (int i=0; i<(values.length()/4); i++) {
-        for (int j=0; j<4; j++) {
-            digitButtons[pos]->setFixedSize(50, 40); // Добавление каждой кнопки в ячейки матрицы GridLayout
+    for (int i=0; i<(values.length()/columns); i++) {
+        for (int j=0; j<columns; j++) {
             grid->addWidget(digitButtons[pos], i, j);
             pos++;
         }
     }
-    connect(buttons, QOverload<QAbstractButton *>::of(&QButtonGroup::buttonClicked),[=](QAbstractButton *actionGroup) {/*.....*/});
+    numberGroup->connect(numberGroup,SIGNAL(buttonClicked(QAbstractButton*)),this, SLOT(numberGroup_clicked(QAbstractButton*)));
+    actionGroup->connect(actionGroup,SIGNAL(buttonClicked(QAbstractButton*)),this, SLOT(actionGroup_clicked(QAbstractButton*)));
+
+    operatorClicked = false;
+    hasStoredNumber = false;
     setLayout(grid1);
 }
 
+void Widget::numberGroup_clicked(QAbstractButton* button){
+    QString displayLabel = label->text();
+    if (operatorClicked || label->text()=="0") {// && label->text().toDouble() !=storedNumber
+        displayLabel.clear();
+        operatorClicked = false;
+    }
+    if (displayLabel.length() >= DIGIT_LIMIT) {
+        return;
+    }
+    displayLabel.append(button->text());
+    label->setText(displayLabel);
+}
+
+void Widget::actionGroup_clicked(QAbstractButton* button){
+    if (operatorClicked) {
+        storedOperator = button->text();
+    }
+    else {
+        if (hasStoredNumber) {
+            calculate_result();
+        }
+        else {
+            hasStoredNumber = true;
+            QString displayLabel = label->text();
+            storedNumber = displayLabel.toDouble();
+        }
+        operatorClicked = true;
+        storedOperator = button->text();
+    }
+}
+
+void Widget::on_actionClear_clicked(){
+    label->setText("");
+    operatorClicked = false;
+    hasStoredNumber = false;
+}
+
+void Widget::on_actionDel_clicked(){
+    QString displayLabel = label->text();
+    if (displayLabel.length() == 0) {
+        return;
+    }
+    displayLabel.QString::chop(1);
+    label->setText(displayLabel);
+}
+
+void Widget::on_actionCalc_clicked(){
+    QString displayLabel = label->text();
+    if (!hasStoredNumber || displayLabel.length() < 1 || operatorClicked) {
+        return;
+    }
+    calculate_result();
+    hasStoredNumber = false;
+}
+
+void Widget::on_comma_clicked(){
+    QString displayLabel = label->text();
+    if (displayLabel.length() >= (DIGIT_LIMIT - 1) ||
+        displayLabel.contains('.', Qt::CaseSensitive)) {
+        return;
+    }
+    if (displayLabel.length() == 0) {
+        displayLabel = "0";
+    }
+    displayLabel.append('.');
+    label->setText(displayLabel);
+}
+
+void Widget::on_actionPercent_clicked(){
+    QString displayLabel = label->text();
+    double percentage = displayLabel.toDouble();
+    percentage *= 0.01;
+    displayLabel = QString::number(percentage,'g', DIGIT_LIMIT);
+    label->setText(displayLabel);
+}
+
+void Widget::on_actionSign_clicked(){
+    QString displayLabel = label->text();
+    double percentage = displayLabel.toDouble();
+    percentage *= -1;
+    displayLabel = QString::number(percentage,'g', DIGIT_LIMIT);
+    label->setText(displayLabel);
+}
+
+void Widget::calculate_result() {
+    QString displayLabel = label->text();
+     if (displayLabel.endsWith('.',Qt::CaseSensitive)) {
+         displayLabel.QString::chop(1);
+     }
+     if (storedOperator == "+") {
+         storedNumber += displayLabel.toDouble();
+     }
+     else if (storedOperator == "-") {
+         storedNumber -= displayLabel.toDouble();
+     }
+     else if (storedOperator == "*") {
+         storedNumber *= displayLabel.toDouble();
+     }
+     else if (storedOperator == "/") {
+         storedNumber /= displayLabel.toDouble();
+     }
+    // else if (storedOperator == "=") {
+         displayLabel = QString::number(storedNumber,'g', DIGIT_LIMIT);
+     //}
+     label->setText(displayLabel);
+}
 Widget::~Widget()
 {
 }
