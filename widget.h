@@ -5,12 +5,15 @@
 #include <QAbstractButton>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QTimer>
+#include <QTime>
 
 class Widget : public QWidget
 {
     Q_OBJECT
 private:
     QLabel *label;
+    QLabel *time;
     int m_value;
     const int DIGIT_LIMIT = 16;
     bool operatorClicked;
@@ -18,6 +21,7 @@ private:
     bool hasStoredNumber;
     double storedNumber;
     void calculate_result();
+    QTimer *timer;
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
@@ -31,6 +35,7 @@ public slots:
     void on_actionClear_clicked();
     void on_actionPercent_clicked();
     void on_actionSign_clicked();
+    void slotTimerAlarm();
 
 protected:
     //void keyPressEvent(QKeyEvent *e);

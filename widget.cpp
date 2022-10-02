@@ -17,6 +17,12 @@ Widget::Widget(QWidget *parent) : QWidget(parent){
     label->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     label->setAlignment(Qt::AlignBottom | Qt::AlignRight);
     label->setStyleSheet("background-color: white");
+    time = new QLabel(this);
+    time->setAlignment(Qt::AlignCenter);
+    time->setStyleSheet("background-color: white");
+    time->setFixedSize(50, 20);
+    label->setMaximumHeight(50);
+    grid1->addWidget(time);
     grid1->addWidget(label);
     grid1->addLayout(grid);
     grid1->setSpacing(2);
@@ -69,6 +75,13 @@ Widget::Widget(QWidget *parent) : QWidget(parent){
     operatorClicked = false;
     hasStoredNumber = false;
     setLayout(grid1);
+    timer = new QTimer();
+    connect(timer, SIGNAL(timeout()), this, SLOT(slotTimerAlarm()));
+    timer->start(1000); // И запустим таймер
+}
+
+void Widget::slotTimerAlarm() {
+    time->setText(QTime::currentTime().toString("hh:mm:ss"));
 }
 
 void Widget::numberGroup_clicked(QAbstractButton* button){
@@ -95,7 +108,6 @@ void Widget::actionGroup_clicked(QAbstractButton* button){
         else {
             hasStoredNumber = true;
             QString displayLabel = label->text();
-            storedNumber = displayLabel.toDouble();
         }
         operatorClicked = true;
         storedOperator = button->text();
@@ -103,7 +115,7 @@ void Widget::actionGroup_clicked(QAbstractButton* button){
 }
 
 void Widget::on_actionClear_clicked(){
-    label->setText("");
+    label->setText(" ");
     operatorClicked = false;
     hasStoredNumber = false;
 }
@@ -177,6 +189,7 @@ void Widget::calculate_result() {
      //}
      label->setText(displayLabel);
 }
+
 Widget::~Widget()
 {
 }
