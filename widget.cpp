@@ -10,6 +10,8 @@
 #include <QButtonGroup>
 #include <QString>
 
+#define PI 3.14159265
+
 Widget::Widget(QWidget *parent) : QWidget(parent){
     QVBoxLayout *grid1 = new QVBoxLayout(this);
     QGridLayout *grid = new QGridLayout(this);
@@ -29,34 +31,33 @@ Widget::Widget(QWidget *parent) : QWidget(parent){
     int columns = 5;
     QList<QString> values(
                 { "C", "Del", "(", ")", "",
-                  "!", "^X", "ld", "logn", "",
+                  "!", "^X", "ln", "logn", "sqrt",
                   "1", "2", "3", "+", "ctg",
                   "4", "5", "6", "-", "tg",
                   "7", "8", "9", "*", "cos",
                   ".", "0", "=", "/", "sin"
                 });
-    QList<QString> numbers({ "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"});
+    QList<QString> numbers({ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"});
 
-
-    QButtonGroup *actionGroup = new QButtonGroup(this);
-    QButtonGroup *numberGroup = new QButtonGroup(this);
-    QToolButton *digitButtons[values.length()];
+    QPushButton *digitButtons[values.length()];
     int a = 0, n = 0;
     for (int i=0; i<values.length(); i++){
-        digitButtons[i] = new QToolButton();
+        digitButtons[i] = new QPushButton();
         digitButtons[i]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        digitButtons[i]->setMinimumWidth(40);
         digitButtons[i]->setText(values[i]);
-        if (digitButtons[i]->text() == "C")
-                digitButtons[i]->setStyleSheet("background-color: red");
-        else if (digitButtons[i]->text() == "=")
-                digitButtons[i]->setStyleSheet("background-color: lightblue");
-        else digitButtons[i]->setStyleSheet("background-color: lightgray");
         if (numbers.contains(digitButtons[i]->text())){
-            numberGroup->addButton(digitButtons[i], a);
+            digitButtons[i]->setStyleSheet("background-color: white");
+            connect(digitButtons[i],SIGNAL(clicked()),this, SLOT(digits_numbers()));
             a++;
         }
         else{
-            actionGroup->addButton(digitButtons[i], n);
+            if (digitButtons[i]->text() == "C")
+                    digitButtons[i]->setStyleSheet("background-color: red");
+            else if (digitButtons[i]->text() == "=")
+                    digitButtons[i]->setStyleSheet("background-color: lightblue");
+            else    digitButtons[i]->setStyleSheet("background-color: lightgrey");
+            connect(digitButtons[i],SIGNAL(clicked()),this, SLOT(operations()));
             n++;
         }
     }
@@ -69,11 +70,7 @@ Widget::Widget(QWidget *parent) : QWidget(parent){
             pos++;
         }
     }
-    numberGroup->connect(numberGroup,SIGNAL(buttonClicked(QAbstractButton*)),this, SLOT(numberGroup_clicked(QAbstractButton*)));
-    actionGroup->connect(actionGroup,SIGNAL(buttonClicked(QAbstractButton*)),this, SLOT(actionGroup_clicked(QAbstractButton*)));
 
-    operatorClicked = false;
-    hasStoredNumber = false;
     setLayout(grid1);
     timer = new QTimer();
     connect(timer, SIGNAL(timeout()), this, SLOT(slotTimerAlarm()));
@@ -84,110 +81,122 @@ void Widget::slotTimerAlarm() {
     time->setText(QTime::currentTime().toString("hh:mm:ss"));
 }
 
-void Widget::numberGroup_clicked(QAbstractButton* button){
-    QString displayLabel = label->text();
-    if (operatorClicked || label->text()=="0") {// && label->text().toDouble() !=storedNumber
-        displayLabel.clear();
-        operatorClicked = false;
+void Widget::digits_numbers(){
+    QPushButton *button = (QPushButton *)sender();
+    double all_numbers;
+    QString new_label;
+    if(label->text().contains(".") && button->text() == "0"){
+        new_label = label->text() + button->text();
+    }else {
+        all_numbers = (label->text() + button->text()).toDouble();
+        new_label = QString::number(all_numbers, 'g', 15);
     }
-    if (displayLabel.length() >= DIGIT_LIMIT) {
-        return;
-    }
-    displayLabel.append(button->text());
-    label->setText(displayLabel);
+
+    label->setText(new_label);
 }
 
-void Widget::actionGroup_clicked(QAbstractButton* button){
-    if (operatorClicked) {
-        storedOperator = button->text();
+void Widget::operations(){
+    num_first = label->text().toDouble();
+    label->setText("");
+    if (on_pushButton_equal_clicked())
+        on_pushButton_equal_clicked();
+}
+
+double fact(int N){
+    if(N < 0)
+        return 0;
+    if (N == 0)
+        return 1;
+    else
+        return N * fact(N - 1);
+}
+
+int Widget::on_pushButton_equal_clicked(){
+    QPushButton *pushButton = (QPushButton *)sender();
+    QString new_label;
+    num_second = label->text().toDouble();
+    if(pushButton->text() == "+"){
+        labelNumber = num_first + num_second;
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 1;
     }
-    else {
-        if (hasStoredNumber) {
-            calculate_result();
+    else if(pushButton->text() == "-"){
+        labelNumber = num_first - num_second;
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 1;
+    }
+    else if(pushButton->text() == "*"){
+        labelNumber = num_first * num_second;
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 1;
+    }
+    else if(pushButton->text() == "/"){
+        if(num_second == 0)
+            label->setText("0");
+        else{
+            labelNumber = num_first / num_second;
+            new_label = QString::number(labelNumber, 'g', 15);
+            label->setText(new_label);
         }
-        else {
-            hasStoredNumber = true;
-            QString displayLabel = label->text();
-        }
-        operatorClicked = true;
-        storedOperator = button->text();
+        return 1;
     }
-}
-
-void Widget::on_actionClear_clicked(){
-    label->setText(" ");
-    operatorClicked = false;
-    hasStoredNumber = false;
-}
-
-void Widget::on_actionDel_clicked(){
-    QString displayLabel = label->text();
-    if (displayLabel.length() == 0) {
-        return;
+    else if(pushButton->text() == "sqrt"){
+        labelNumber = sqrt(num_first);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
     }
-    displayLabel.QString::chop(1);
-    label->setText(displayLabel);
-}
-
-void Widget::on_actionCalc_clicked(){
-    QString displayLabel = label->text();
-    if (!hasStoredNumber || displayLabel.length() < 1 || operatorClicked) {
-        return;
+    else if(pushButton->text() == "^X"){
+        labelNumber = pow(num_first, step);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 1;
     }
-    calculate_result();
-    hasStoredNumber = false;
-}
-
-void Widget::on_comma_clicked(){
-    QString displayLabel = label->text();
-    if (displayLabel.length() >= (DIGIT_LIMIT - 1) ||
-        displayLabel.contains('.', Qt::CaseSensitive)) {
-        return;
+    else if(pushButton->text() == "cos"){
+        labelNumber = cos(num_first*PI/180);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
     }
-    if (displayLabel.length() == 0) {
-        displayLabel = "0";
+    else if(pushButton->text() == "sin"){
+        labelNumber = sin(num_first*PI/180);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
     }
-    displayLabel.append('.');
-    label->setText(displayLabel);
-}
-
-void Widget::on_actionPercent_clicked(){
-    QString displayLabel = label->text();
-    double percentage = displayLabel.toDouble();
-    percentage *= 0.01;
-    displayLabel = QString::number(percentage,'g', DIGIT_LIMIT);
-    label->setText(displayLabel);
-}
-
-void Widget::on_actionSign_clicked(){
-    QString displayLabel = label->text();
-    double percentage = displayLabel.toDouble();
-    percentage *= -1;
-    displayLabel = QString::number(percentage,'g', DIGIT_LIMIT);
-    label->setText(displayLabel);
-}
-
-void Widget::calculate_result() {
-    QString displayLabel = label->text();
-     if (displayLabel.endsWith('.',Qt::CaseSensitive)) {
-         displayLabel.QString::chop(1);
-     }
-     if (storedOperator == "+") {
-         storedNumber += displayLabel.toDouble();
-     }
-     else if (storedOperator == "-") {
-         storedNumber -= displayLabel.toDouble();
-     }
-     else if (storedOperator == "*") {
-         storedNumber *= displayLabel.toDouble();
-     }
-     else if (storedOperator == "/") {
-         storedNumber /= displayLabel.toDouble();
-     }
-    // else if (storedOperator == "=") {
-         displayLabel = QString::number(storedNumber,'g', DIGIT_LIMIT);
-     //}
-     label->setText(displayLabel);
+    else if(pushButton->text() == "ld"){
+        labelNumber = log(num_first);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
+    }
+    else if(pushButton->text() == "tg"){
+        labelNumber = tan(num_first*PI/180);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
+    }
+    else if(pushButton->text() == "ctg"){
+        labelNumber = 1/tan(num_first*PI/180);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
+    }
+    else if(pushButton->text() == "!"){
+        labelNumber = fact(num_first);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 0;
+    }
+    else if(pushButton->text() == "log"){
+        labelNumber = log(num_first)/log(num_second);
+        new_label = QString::number(labelNumber, 'g', 15);
+        label->setText(new_label);
+        return 1;
+    }
 }
 
 Widget::~Widget()

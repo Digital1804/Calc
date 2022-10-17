@@ -2,6 +2,7 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QPushButton>
 #include <QAbstractButton>
 #include <QKeyEvent>
 #include <QLabel>
@@ -12,29 +13,20 @@ class Widget : public QWidget
 {
     Q_OBJECT
 private:
+    //QPushButton *digitButtons;
+    double num_first, num_second, labelNumber;
+    int step;
     QLabel *label;
     QLabel *time;
-    int m_value;
-    const int DIGIT_LIMIT = 16;
-    bool operatorClicked;
-    QString storedOperator;
-    bool hasStoredNumber;
-    double storedNumber;
-    void calculate_result();
     QTimer *timer;
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
 
 public slots:
-    void numberGroup_clicked(QAbstractButton*);
-    void actionGroup_clicked(QAbstractButton*);
-    void on_actionDel_clicked();
-    void on_actionCalc_clicked();
-    void on_comma_clicked();
-    void on_actionClear_clicked();
-    void on_actionPercent_clicked();
-    void on_actionSign_clicked();
+    int on_pushButton_equal_clicked();
+    void digits_numbers();
+    void operations();
     void slotTimerAlarm();
 
 protected:
